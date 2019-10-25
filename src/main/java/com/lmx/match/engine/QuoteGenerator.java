@@ -56,13 +56,14 @@ public class QuoteGenerator {
 
     public synchronized static void matchOrder() {
         //匹配
-        Iterator<Order> buyIt = buyList.iterator(), sellIt = sellList.iterator();
+        Iterator<Order> buyIt = buyList.iterator();
         while (buyIt.hasNext()) {
             Order b = buyIt.next();
             //计算单笔买量是否小于等于总卖量，是则匹配
             Integer totalSell = sellList.stream().map(Order::getVolume).reduce(0, Integer::sum);
             if (b.getVolume() <= totalSell) {
                 System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
+                Iterator<Order> sellIt = sellList.iterator();
                 while (sellIt.hasNext()) {
                     Order s = sellIt.next();
                     BigDecimal dealPrice;
