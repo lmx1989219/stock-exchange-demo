@@ -21,19 +21,37 @@ public class QuoteGenerator {
     static List<Order> sellList = Lists.newArrayList();
     static Level10 level10 = new Level10();
 
-    public synchronized static void createOrder() {
-        for (int i = 0; i < 50; i++) {
-            Order order = new Order();
-            //委托价格大于涨停价或者小于跌停价不能交易
-            if ((Level10.upLimited != null && Level10.downLimited != null) && (order.getPrice().compareTo(Level10.upLimited) > 0
-                    || order.getPrice().compareTo(Level10.downLimited) < 0)) {
-                System.err.printf("当前价格[%s]已经触及涨停或跌停", order.getPrice());
+    static boolean checkLimited(Order order) {
+        //委托价格大于涨停价或者小于跌停价不能交易
+        if ((Level10.upLimited != null && Level10.downLimited != null) && (order.getPrice().compareTo(Level10.upLimited) > 0
+                || order.getPrice().compareTo(Level10.downLimited) < 0)) {
+            System.err.printf("当前价格[%s]已经触及涨停或跌停\n", order.getPrice());
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized static void createOrder(Order wtOrder) {
+        if (wtOrder != null) {
+            if (checkLimited(wtOrder)) {
                 return;
             }
-            if (order.getBs() == 0) {
-                buyList.add(order);
+            if (wtOrder.getBs() == 0) {
+                buyList.add(wtOrder);
             } else {
-                sellList.add(order);
+                sellList.add(wtOrder);
+            }
+        } else {
+            for (int i = 0; i < 50; i++) {
+                Order order = new Order();
+                if (checkLimited(order)) {
+                    return;
+                }
+                if (order.getBs() == 0) {
+                    buyList.add(order);
+                } else {
+                    sellList.add(order);
+                }
             }
         }
         //降序：价格高的在前，时间早的在前
@@ -62,22 +80,22 @@ public class QuoteGenerator {
             //计算单笔买量是否小于等于总卖量，是则匹配
             Integer totalSell = sellList.stream().map(Order::getVolume).reduce(0, Integer::sum);
             if (b.getVolume() <= totalSell) {
-                System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
+//                System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
                 Iterator<Order> sellIt = sellList.iterator();
                 while (sellIt.hasNext()) {
                     Order s = sellIt.next();
                     BigDecimal dealPrice;
-                    //行情不为0，以此价格为成交价
+                    //行情不为0，说明此时为连续竞价阶段了，以此价格为成交价
                     if (level10.getLast().floatValue() != 0) {
                         dealPrice = level10.getLast();
                         //卖价低于最新价，则以卖价成交
                         if (s.getPrice().compareTo(dealPrice) < 0) {
                             dealPrice = s.getPrice();
                         }
-                    } else {//行情为0，以首次撮合时卖价最低的为成交价并且定为开盘价，同时设置涨跌停价格
+                    } else {//行情为0，说明是首次集中竞价，取卖价最低的为成交价并定为开盘价，同时设置涨跌停
                         Level10.open = dealPrice = s.getPrice();
-                        Level10.upLimited = dealPrice.multiply(new BigDecimal(1.1)).setScale(2, RoundingMode.HALF_UP);
-                        Level10.downLimited = dealPrice.multiply(new BigDecimal(0.9)).setScale(2, RoundingMode.HALF_UP);
+                        Level10.upLimited = dealPrice.multiply(new BigDecimal(1 + 0.1)).setScale(2, RoundingMode.HALF_UP);
+                        Level10.downLimited = dealPrice.multiply(new BigDecimal(1 - 0.1)).setScale(2, RoundingMode.HALF_UP);
                     }
                     //委买大于委卖价格则撮合
                     if (b.getPrice().compareTo(dealPrice) >= 0) {
@@ -179,8 +197,8 @@ public class QuoteGenerator {
         new Thread(() -> {
             while (true) {
                 try {
-                    //模拟报单
-                    createOrder();
+                    //模拟报单（准备集合竞价的订单）
+                    createOrder(null);
                     Thread.sleep(60 * 1000L);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -190,19 +208,22 @@ public class QuoteGenerator {
 
         while (true) {
             try {
-                //模拟放量拉涨或者拉跌，只要价格合理，量足够大就行
+                System.out.printf("请输入控制台指令,queue=查看买卖队列,quote=查看行情\n", buyList, sellList);
                 BufferedReader bf = new BufferedReader(new InputStreamReader(System.in));
-                //格式->价格，量，买卖标记 [11,10000,0]
                 String request = bf.readLine();
-                List<String> params = Lists.newArrayList(Splitter.on(",").split(request));
-                Order order = new Order(new BigDecimal(params.get(0)), Integer.valueOf(params.get(1)), Integer.valueOf(params.get(2)));
-                synchronized (QuoteGenerator.class) {
-                    if (order.getBs() == 0) {
-                        buyList.add(order);
-                    } else {
-                        sellList.add(order);
+                if ("queue".equals(request.toLowerCase())) {
+                    System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
+                } else if ("quote".equals(request.toLowerCase())) {
+                    System.out.printf("行情=%s\n", level10);
+                } else {
+                    //格式->价格，量，买卖标记 [11,10000,0] 可很容易模拟放量拉涨或者拉跌，只要价格合理，量足够大就行
+                    List<String> params = Lists.newArrayList(Splitter.on(",").split(request));
+                    Order order = new Order(new BigDecimal(params.get(0)), Integer.valueOf(params.get(1)), Integer.valueOf(params.get(2)));
+                    synchronized (QuoteGenerator.class) {
+                        //模拟参与连续竞价
+                        createOrder(order);
+                        matchOrder();
                     }
-                    matchOrder();
                 }
             } catch (Exception e) {
                 e.printStackTrace();

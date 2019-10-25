@@ -22,8 +22,10 @@ public class Level10 {
 
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder("\n");
-        stringBuilder.append(open).append("\t").append(last).append("\t").append(upLimited).append("\t").append(downLimited).append("\t").append("\n");
-        stringBuilder.append("+++++++++++").append("\n");
+        stringBuilder.append("开盘=" + open).append("\t")
+                .append("最新=" + last).append("\t")
+                .append("涨停=" + upLimited).append("\t")
+                .append("跌停=" + downLimited).append("\n\n");
         for (Quote quote : sell5) {
             if (quote != null)
                 stringBuilder.append(quote.getPrice()).append("\t").append(quote.getVolume()).append("\n");
