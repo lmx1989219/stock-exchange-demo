@@ -1,7 +1,10 @@
 package com.lmx.match.engine;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -59,7 +62,7 @@ public class QuoteGenerator {
             //计算单笔买量是否小于等于总卖量，是则匹配
             Integer totalSell = sellList.stream().map(Order::getVolume).reduce(0, Integer::sum);
             if (b.getVolume() <= totalSell) {
-//                System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
+                System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
                 while (sellIt.hasNext()) {
                     Order s = sellIt.next();
                     BigDecimal dealPrice;
@@ -163,7 +166,7 @@ public class QuoteGenerator {
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(1000L);
+                    Thread.sleep(5000L);
                     //模拟撮合
                     matchOrder();
                 } catch (Exception e) {
@@ -177,7 +180,7 @@ public class QuoteGenerator {
                 try {
                     //模拟报单
                     createOrder();
-                    Thread.sleep(2 * 1000L);
+                    Thread.sleep(60 * 1000L);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -186,8 +189,22 @@ public class QuoteGenerator {
 
         while (true) {
             try {
-                Thread.sleep(10L);
-            } catch (InterruptedException e) {
+                //模拟放量拉涨或者拉跌，只要价格合理，量足够大就行
+                BufferedReader bf = new BufferedReader(new InputStreamReader(System.in));
+                //格式->价格，量，买卖标记 [11,10000,0]
+                String request = bf.readLine();
+                List<String> params = Lists.newArrayList(Splitter.on(",").split(request));
+                Order order = new Order(new BigDecimal(params.get(0)), Integer.valueOf(params.get(1)), Integer.valueOf(params.get(2)));
+                synchronized (QuoteGenerator.class) {
+                    if (order.getBs() == 0) {
+                        buyList.add(order);
+                    } else {
+                        sellList.add(order);
+                    }
+                    matchOrder();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

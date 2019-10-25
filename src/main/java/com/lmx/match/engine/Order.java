@@ -34,7 +34,13 @@ public class Order {
         this.volume = volume;
     }
 
+    public Order(BigDecimal price, Integer volume, Integer bs) {
+        this.price = price;
+        this.volume = volume;
+        this.bs = bs;
+    }
+
     public String toString() {
-        return "{oid=" + oid + "+price=" + price + ",volume=" + volume + "}";
+        return "{oid=" + oid + ",price=" + price + ",volume=" + volume + "}";
     }
 }
