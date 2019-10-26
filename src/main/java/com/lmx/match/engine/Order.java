@@ -23,7 +23,7 @@ public class Order {
     private static Random random = new Random();
 
     private Long oid = Long.parseLong(String.format("1%010d", atomicLong.getAndIncrement()));
-    private String pCode = "600000";
+    private String pCode = QuoteGenerator.pCode;
     private Integer bs = random.nextInt(2);
     private BigDecimal price = new BigDecimal(String.format("%.2f", 10 + Math.random()));
     private Integer volume = 100 + 100 * random.nextInt(10);
