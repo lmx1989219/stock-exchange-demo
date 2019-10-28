@@ -3,6 +3,7 @@ package com.lmx.match.engine;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -65,8 +66,8 @@ public class QuoteGenerator {
                 String request = bf.readLine();
                 if ("queue".equals(request.toLowerCase())) {
                     OrderQueue queue = matchPool.getQueue(pCode);
-                    List<Order> buyList = queue.buyList;
-                    List<Order> sellList = queue.sellList;
+                    ObjectSortedSet<Order> buyList = queue.buyList;
+                    ObjectSortedSet<Order> sellList = queue.sellList;
                     System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
                 } else if ("quote".equals(request.toLowerCase())) {
                     System.out.printf("行情=%s\n", Level10.Pool.getLevel10(pCode));

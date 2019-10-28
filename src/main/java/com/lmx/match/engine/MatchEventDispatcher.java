@@ -2,6 +2,7 @@ package com.lmx.match.engine;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
 import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
@@ -84,8 +85,8 @@ public class MatchEventDispatcher {
      * @param price
      */
     void pushQuote(OrderQueue queue, String pCode, BigDecimal price) {
-        List<Order> buyList = queue.buyList;
-        List<Order> sellList = queue.sellList;
+        ObjectSortedSet<Order> buyList = queue.buyList;
+        ObjectSortedSet<Order> sellList = queue.sellList;
         Level10 level10 = Level10.Pool.getLevel10(pCode);
         List<Order> sellTmp = Lists.newArrayList(sellList);
         int levelB = 0, levelS = 0;

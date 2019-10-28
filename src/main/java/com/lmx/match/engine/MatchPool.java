@@ -1,6 +1,7 @@
 package com.lmx.match.engine;
 
 import com.google.common.collect.Maps;
+import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,8 +53,8 @@ public class MatchPool {
         executorService.execute(() -> {
             OrderQueue queue = queueMap.get(pCode);
             synchronized (queue.lock) {
-                List<Order> buyList = queue.buyList;
-                List<Order> sellList = queue.sellList;
+                ObjectSortedSet<Order> buyList = queue.buyList;
+                ObjectSortedSet<Order> sellList = queue.sellList;
                 //匹配
                 Iterator<Order> buyIt = buyList.iterator();
                 while (buyIt.hasNext()) {

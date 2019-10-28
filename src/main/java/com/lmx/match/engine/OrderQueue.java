@@ -1,8 +1,7 @@
 package com.lmx.match.engine;
 
-import com.google.common.collect.Lists;
-
-import java.util.List;
+import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
+import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
 
 /**
  * 订单队列
@@ -11,8 +10,23 @@ import java.util.List;
  * @date : 2019/10/26 16:44
  */
 public class OrderQueue {
-    List<Order> buyList = Lists.newArrayList();
-    List<Order> sellList = Lists.newArrayList();
+
+    ObjectSortedSet<Order> buyList = new ObjectAVLTreeSet<>((a, b) -> {
+        if (a.getPrice().compareTo(b.getPrice()) == 0) {
+            return a.getTime().compareTo(b.getTime());
+        } else {
+            return -a.getPrice().compareTo(b.getPrice());
+        }
+    });
+
+    ObjectSortedSet<Order> sellList = new ObjectAVLTreeSet<>((a, b) -> {
+        if (a.getPrice().compareTo(b.getPrice()) == 0) {
+            return a.getTime().compareTo(b.getTime());
+        } else {
+            return a.getPrice().compareTo(b.getPrice());
+        }
+    });
+
     final Object lock = new Object();//对象级的互斥锁，报单和撮合严格互斥
 
     boolean checkLimited(Order order) {
@@ -38,7 +52,6 @@ public class OrderQueue {
             } else {
                 sellList.add(wtOrder);
             }
-            sortQueue();
         }
     }
 
@@ -50,26 +63,6 @@ public class OrderQueue {
             } else {
                 sellList.remove(wtOrder);
             }
-            sortQueue();
         }
-    }
-
-    void sortQueue() {
-        //降序：价格高的在前，时间早的在前
-        buyList.sort((a, b) -> {
-            if (a.getPrice().compareTo(b.getPrice()) == 0) {
-                return a.getTime().compareTo(b.getTime());
-            } else {
-                return -a.getPrice().compareTo(b.getPrice());
-            }
-        });
-        //升序:价格低在前，时间早的在前
-        sellList.sort((a, b) -> {
-            if (a.getPrice().compareTo(b.getPrice()) == 0) {
-                return a.getTime().compareTo(b.getTime());
-            } else {
-                return a.getPrice().compareTo(b.getPrice());
-            }
-        });
     }
 }
