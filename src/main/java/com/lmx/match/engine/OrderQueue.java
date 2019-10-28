@@ -17,7 +17,7 @@ public class OrderQueue {
 
     boolean checkLimited(Order order) {
         String pCode = order.getPCode();
-        Level10 level10 = MatchPool.level10Pool.getLevel10(pCode);
+        Level10 level10 = Level10.Pool.getLevel10(pCode);
         //委托价格大于涨停价或者小于跌停价不能交易
         if ((level10 != null && level10.getUpLimited() != null && level10.getDownLimited() != null)
                 && (order.getPrice().compareTo(level10.getUpLimited()) > 0
@@ -38,23 +38,38 @@ public class OrderQueue {
             } else {
                 sellList.add(wtOrder);
             }
-            //降序：价格高的在前，时间早的在前
-            buyList.sort((a, b) -> {
-                if (a.getPrice().compareTo(b.getPrice()) == 0) {
-                    return a.getTime().compareTo(b.getTime());
-                } else {
-                    return -a.getPrice().compareTo(b.getPrice());
-                }
-            });
-            //升序:价格低在前，时间早的在前
-            sellList.sort((a, b) -> {
-                if (a.getPrice().compareTo(b.getPrice()) == 0) {
-                    return a.getTime().compareTo(b.getTime());
-                } else {
-                    return a.getPrice().compareTo(b.getPrice());
-                }
-            });
+            sortQueue();
         }
     }
 
+
+    void revoke(Order wtOrder) {
+        synchronized (lock) {
+            if (wtOrder.getBs() == 0) {
+                buyList.remove(wtOrder);
+            } else {
+                sellList.remove(wtOrder);
+            }
+            sortQueue();
+        }
+    }
+
+    void sortQueue() {
+        //降序：价格高的在前，时间早的在前
+        buyList.sort((a, b) -> {
+            if (a.getPrice().compareTo(b.getPrice()) == 0) {
+                return a.getTime().compareTo(b.getTime());
+            } else {
+                return -a.getPrice().compareTo(b.getPrice());
+            }
+        });
+        //升序:价格低在前，时间早的在前
+        sellList.sort((a, b) -> {
+            if (a.getPrice().compareTo(b.getPrice()) == 0) {
+                return a.getTime().compareTo(b.getTime());
+            } else {
+                return a.getPrice().compareTo(b.getPrice());
+            }
+        });
+    }
 }

@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /**
  * 撮合、行情报价引擎
@@ -20,6 +21,7 @@ public class QuoteGenerator {
 
 
     static String market = "sh", pCode = "600000";
+    static public SystemBus systemBus = new SystemBus();
 
     public static void main(String[] args) {
         //初始化市场合约代码
@@ -30,6 +32,9 @@ public class QuoteGenerator {
         marketPCodeList.forEach((market, pCodeList) -> pCodeList.forEach(pCode -> {
             matchPool.initPool(pCode, new OrderQueue());
         }));
+        //注册撮合事件处理器
+        MatchEventDispatcher matchEventDispatcher = new MatchEventDispatcher(matchPool, Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2));
+        systemBus.registryEvent(matchEventDispatcher);
         //开启报单线程
         new Thread(() -> {
             while (true) {
@@ -39,13 +44,14 @@ public class QuoteGenerator {
                         for (int i = 0; i < 50; i++) {
                             Order order = new Order();
                             order.setPCode(pCode);
-                            queue.addOrder(order);
+                            //发布挂单事件
+                            systemBus.publishEvent(order);
                         }
-                        //开启撮合线程
-                        matchPool.matchOrder(pCode);
+                        //发布撮合事件
+                        systemBus.publishEvent(new MatchEventDispatcher.MatchEvent(pCode, MatchEventDispatcher.EventEnum.MATCH_TRADE));
                     });
 
-                    Thread.sleep(15 * 1000L);
+                    Thread.sleep(30 * 1000L);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -63,19 +69,16 @@ public class QuoteGenerator {
                     List<Order> sellList = queue.sellList;
                     System.out.printf("买队列=%s\n卖队列=%s\n", buyList, sellList);
                 } else if ("quote".equals(request.toLowerCase())) {
-                    System.out.printf("行情=%s\n", MatchPool.level10Pool.getLevel10(pCode));
+                    System.out.printf("行情=%s\n", Level10.Pool.getLevel10(pCode));
                 } else {
                     //格式->价格，量，买卖标记 [11,10000,0] 可很容易模拟放量拉涨或者拉跌，只要价格合理，量足够大就行
                     List<String> params = Lists.newArrayList(Splitter.on(",").split(request));
                     Order order = new Order(new BigDecimal(params.get(0)), Integer.valueOf(params.get(1)), Integer.valueOf(params.get(2)));
-                    synchronized (QuoteGenerator.class) {
-                        //模拟参与连续竞价
-                        OrderQueue queue = matchPool.getQueue(order.getPCode());
-                        //模拟报单（准备集合竞价的订单）
-                        queue.addOrder(order);
-                        //触发撮合
-                        matchPool.matchOrder(order.getPCode());
-                    }
+                    //模拟参与连续竞价
+                    //发布挂单事件,模拟报单（准备集合竞价的订单）
+                    systemBus.publishEvent(order);
+                    //触发撮合
+                    systemBus.publishEvent(new MatchEventDispatcher.MatchEvent(order.getPCode(), MatchEventDispatcher.EventEnum.MATCH_TRADE));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
